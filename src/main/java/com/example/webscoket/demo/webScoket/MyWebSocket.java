@@ -9,8 +9,11 @@ import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Created by 自由翱翔峰 on 2018/12/7 16:09
@@ -65,23 +68,33 @@ public class MyWebSocket {
     public void OnMessage(String message,Session session, @PathParam  ( "name" ) String name) throws IOException {
         //message不是普通的string,而是我们定义的SocketEntity,json字符串
         SocketEntity socketEntity = new ObjectMapper (  ).readValue ( message,SocketEntity.class );
-        //单聊
-         if (socketEntity.getType ()==1){
-             //单聊：需要找到发送者和接收者即可
-             socketEntity.setFromUser ( session.getId () );//发送者
-//             socketEntity.setToUser ( toUser );//这个有客户端进行设置
-             Session fromsession = map.get ( socketEntity.getFromUser () );
-             Session tosession = map.get ( socketEntity.getToUser ());
-             if (tosession!=null){
-                 fromsession.getAsyncRemote ().sendText ( name+":" +socketEntity.getMessage ());//发送消息
-                 tosession.getAsyncRemote ().sendText ( name+":" +socketEntity.getMessage ());//发送消息
-             }else {
-                 fromsession.getAsyncRemote ().sendText ( "系统消息:对方不在线或者您输入的频道号有误");//发送消息
-             }
-         }else {
-             //   广播群发给每一个客户端
-             broadcast(socketEntity,name);
-         }
+        int cmd = socketEntity.getCmd();
+        switch (cmd){
+            case 100:
+                LinkedHashMap<String,String> map = new LinkedHashMap<>();
+                for (MyWebSocket myWebSocket: webSocketSet){
+                    map.put(myWebSocket.name,myWebSocket.session.getId());
+                }
+                session.getAsyncRemote().sendObject(map);
+                break;
+        }
+//        //单聊
+//         if (socketEntity.getType ()==1){
+//             //单聊：需要找到发送者和接收者即可
+//             socketEntity.setFromUser ( session.getId () );//发送者
+////             socketEntity.setToUser ( toUser );//这个有客户端进行设置
+//             Session fromsession = map.get ( socketEntity.getFromUser () );
+//             Session tosession = map.get ( socketEntity.getToUser ());
+//             if (tosession!=null){
+//                 fromsession.getAsyncRemote ().sendText ( name+":" +socketEntity.getMessage ());//发送消息
+//                 tosession.getAsyncRemote ().sendText ( name+":" +socketEntity.getMessage ());//发送消息
+//             }else {
+//                 fromsession.getAsyncRemote ().sendText ( "系统消息:对方不在线或者您输入的频道号有误");//发送消息
+//             }
+//         }else {
+//             //   广播群发给每一个客户端
+//             broadcast(socketEntity,name);
+//         }
 
     }
 

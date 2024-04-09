@@ -4,6 +4,7 @@ package com.example.webscoket.demo.entity;
  * Created by 自由翱翔峰 on 2018/12/9 16:27
  */
 public class SocketEntity {
+    private int cmd;//命令
     private int type;//聊天类型，0群聊，1单聊；
     private String fromUser;//发送者
     private String toUser;//接收者；（可以是用户名等）session.getId（）
@@ -40,5 +41,11 @@ public class SocketEntity {
         this.message=message;
     }
 
+    public int getCmd() {
+        return cmd;
+    }
 
+    public void setCmd(int cmd) {
+        this.cmd = cmd;
+    }
 }
