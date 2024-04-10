@@ -1,7 +1,11 @@
 package com.example.webscoket.demo.webScoket;
 
+import com.example.webscoket.demo.Command;
 import com.example.webscoket.demo.entity.SocketEntity;
+import com.example.webscoket.demo.entity.SocketPackage;
+import com.example.webscoket.demo.entity.SocketUser;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import org.springframework.stereotype.Component;
 
 import javax.websocket.*;
@@ -31,6 +35,7 @@ public class MyWebSocket {
     private static Map<String,Session> map = new HashMap <String,Session> (  );
     private Session session;//当前会话的session
     private String name;
+    private Gson gson = new Gson();
     /**
      * 成功建立连接调用的方法
      */
@@ -41,7 +46,8 @@ public class MyWebSocket {
         map.put ( session.getId (),session );
         webSocketSet.add ( this );//加入set中
         System.out.println( name+"上线了"+"我的频道号是"+session.getId ()+",当前连接人数为："+ webSocketSet.size ());
-        this.session.getAsyncRemote ().sendText ( name+"上线了"+"我的频道号是"+session.getId ()+",当前连接人数为："+ webSocketSet.size () );
+//        this.session.getAsyncRemote ().sendText ( name+"上线了"+"我的频道号是"+session.getId ()+",当前连接人数为："+ webSocketSet.size () );
+        this.session.getAsyncRemote().sendText(gson.toJson(new SocketPackage(Command.cmd_user_info_99,new SocketUser(name,session.getId()))));
     }
 
     /**
@@ -69,13 +75,14 @@ public class MyWebSocket {
         //message不是普通的string,而是我们定义的SocketEntity,json字符串
         SocketEntity socketEntity = new ObjectMapper (  ).readValue ( message,SocketEntity.class );
         int cmd = socketEntity.getCmd();
+        System.out.println("收到cmd:"+cmd);
         switch (cmd){
             case 100:
                 LinkedHashMap<String,String> map = new LinkedHashMap<>();
                 for (MyWebSocket myWebSocket: webSocketSet){
                     map.put(myWebSocket.name,myWebSocket.session.getId());
                 }
-                session.getAsyncRemote().sendObject(map);
+                session.getAsyncRemote().sendText(gson.toJson(new SocketPackage(Command.cmd_get_online_users_100,map)));
                 break;
         }
 //        //单聊
