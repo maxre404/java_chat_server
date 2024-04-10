@@ -1,8 +1,9 @@
 package com.example.webscoket.demo.webScoket;
 
 import com.example.webscoket.demo.Command;
+import com.example.webscoket.demo.Utils.PictureUtil;
 import com.example.webscoket.demo.entity.SocketEntity;
-import com.example.webscoket.demo.entity.SocketPackage;
+import com.example.webscoket.demo.entity.SocketResponse;
 import com.example.webscoket.demo.entity.SocketUser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
@@ -12,12 +13,10 @@ import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.function.Function;
-import java.util.stream.Stream;
 
 /**
  * Created by 自由翱翔峰 on 2018/12/7 16:09
@@ -35,6 +34,7 @@ public class MyWebSocket {
     private static Map<String,Session> map = new HashMap <String,Session> (  );
     private Session session;//当前会话的session
     private String name;
+    private String imgUrl = "";
     private Gson gson = new Gson();
     /**
      * 成功建立连接调用的方法
@@ -45,9 +45,10 @@ public class MyWebSocket {
         this.name = name;
         map.put ( session.getId (),session );
         webSocketSet.add ( this );//加入set中
+        imgUrl = PictureUtil.getPicture();
         System.out.println( name+"上线了"+"我的频道号是"+session.getId ()+",当前连接人数为："+ webSocketSet.size ());
 //        this.session.getAsyncRemote ().sendText ( name+"上线了"+"我的频道号是"+session.getId ()+",当前连接人数为："+ webSocketSet.size () );
-        this.session.getAsyncRemote().sendText(gson.toJson(new SocketPackage(Command.cmd_user_info_99,new SocketUser(name,session.getId()))));
+        this.session.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_user_info_99,new SocketUser(name,session.getId(), imgUrl))));
     }
 
     /**
@@ -77,32 +78,32 @@ public class MyWebSocket {
         int cmd = socketEntity.getCmd();
         System.out.println("收到cmd:"+cmd);
         switch (cmd){
-            case 100:
-                LinkedHashMap<String,String> map = new LinkedHashMap<>();
+            case Command.cmd_get_online_users_100:
+                ArrayList<SocketUser> userList = new ArrayList<>();
                 for (MyWebSocket myWebSocket: webSocketSet){
-                    map.put(myWebSocket.name,myWebSocket.session.getId());
+                    userList.add(new SocketUser(myWebSocket.name,myWebSocket.session.getId(),myWebSocket.imgUrl));
                 }
-                session.getAsyncRemote().sendText(gson.toJson(new SocketPackage(Command.cmd_get_online_users_100,map)));
+                session.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_get_online_users_100,userList)));
+                break;
+            case Command.cmd_chat_101:
+                //        //单聊
+                if (socketEntity.getType() == 1) {
+                    //单聊：需要找到发送者和接收者即可
+                    socketEntity.setFromUser(session.getId());//发送者
+                    Session fromsession = map.get(socketEntity.getFromUser());
+                    Session tosession = map.get(socketEntity.getToUser());
+                    if (tosession != null) {
+                        fromsession.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_chat_101,socketEntity)));//发送消息
+                        tosession.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_chat_101,socketEntity)));//发送消息
+                    } else {
+                        fromsession.getAsyncRemote().sendText("系统消息:对方不在线或者您输入的频道号有误");//发送消息
+                    }
+                } else {
+                    //   广播群发给每一个客户端
+                    broadcast(socketEntity, name);
+                }
                 break;
         }
-//        //单聊
-//         if (socketEntity.getType ()==1){
-//             //单聊：需要找到发送者和接收者即可
-//             socketEntity.setFromUser ( session.getId () );//发送者
-////             socketEntity.setToUser ( toUser );//这个有客户端进行设置
-//             Session fromsession = map.get ( socketEntity.getFromUser () );
-//             Session tosession = map.get ( socketEntity.getToUser ());
-//             if (tosession!=null){
-//                 fromsession.getAsyncRemote ().sendText ( name+":" +socketEntity.getMessage ());//发送消息
-//                 tosession.getAsyncRemote ().sendText ( name+":" +socketEntity.getMessage ());//发送消息
-//             }else {
-//                 fromsession.getAsyncRemote ().sendText ( "系统消息:对方不在线或者您输入的频道号有误");//发送消息
-//             }
-//         }else {
-//             //   广播群发给每一个客户端
-//             broadcast(socketEntity,name);
-//         }
-
     }
 
     /**

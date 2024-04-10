@@ -1,10 +1,10 @@
 package com.example.webscoket.demo.entity;
 
-public class SocketPackage {
+public class SocketResponse {
     private int cmd;
     private Object data;
 
-    public SocketPackage(int cmd, Object data) {
+    public SocketResponse(int cmd, Object data) {
         this.cmd = cmd;
         this.data = data;
     }
