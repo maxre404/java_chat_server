@@ -2,8 +2,11 @@ package com.example.webscoket.demo.Utils;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class PictureUtil {
+    public static ConcurrentMap<String,String> picMap = new ConcurrentHashMap<>();
     public static ArrayList<String> picList = new ArrayList<>();
     private static Random random = new Random();
 
