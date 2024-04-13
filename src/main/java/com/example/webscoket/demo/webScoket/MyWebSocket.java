@@ -1,6 +1,7 @@
 package com.example.webscoket.demo.webScoket;
 
 import com.example.webscoket.demo.Command;
+import com.example.webscoket.demo.Config;
 import com.example.webscoket.demo.Utils.PictureUtil;
 import com.example.webscoket.demo.entity.SocketEntity;
 import com.example.webscoket.demo.entity.SocketResponse;
@@ -18,10 +19,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.function.BiConsumer;
 
 /**
- * Created by 自由翱翔峰 on 2018/12/7 16:09
+ *
  */
 
 /**
@@ -53,7 +53,7 @@ public class MyWebSocket {
         imgUrl = PictureUtil.picMap.get(userId);
         userMap.put(userId,this);
         System.out.println( name+"上线了"+"我的频道号是"+session.getId ()+",当前连接人数为："+ webSocketSet.size ());
-        broadCastUserLogin(new SocketResponse(Command.cmd_user_info_99,new SocketUser(userId,name,session.getId(), imgUrl)));
+        broadCastEvent(new SocketResponse(Command.cmd_user_info_99,new SocketUser(Config.privateMessage,0,userId,name,session.getId(), imgUrl)));
 //        this.session.getAsyncRemote ().sendText ( name+"上线了"+"我的频道号是"+session.getId ()+",当前连接人数为："+ webSocketSet.size () );
 //        this.session.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_user_info_99,new SocketUser(name,session.getId(), imgUrl))));
     }
@@ -84,12 +84,13 @@ public class MyWebSocket {
         //message不是普通的string,而是我们定义的SocketEntity,json字符串
         SocketEntity socketEntity = new ObjectMapper (  ).readValue ( message,SocketEntity.class );
         int cmd = socketEntity.getCmd();
-        System.out.println("收到cmd:"+cmd);
+        System.out.println("收到cmd:"+cmd+"内容:"+socketEntity.toString());
         switch (cmd){
             case Command.cmd_get_online_users_100:
                 ArrayList<SocketUser> userList = new ArrayList<>();
+                userList.add(new SocketUser(Config.groupChat,  Config.systemGroupId,"","+++++++系统消息群+++++++++","",PictureUtil.systemGroupUrl));
                 for (MyWebSocket myWebSocket: webSocketSet){
-                    userList.add(new SocketUser(myWebSocket.userId,myWebSocket.name,myWebSocket.session.getId(),myWebSocket.imgUrl));
+                    userList.add(new SocketUser(Config.privateMessage,0,myWebSocket.userId,myWebSocket.name,myWebSocket.session.getId(),myWebSocket.imgUrl));
                 }
                 session.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_get_online_users_100,userList)));
                 break;
@@ -97,20 +98,26 @@ public class MyWebSocket {
                 //        //单聊
                 if (socketEntity.getType() == 1) {
                     //单聊：需要找到发送者和接收者即可
-//                    socketEntity.setFromUser(userId);//发送者
-//                    Session fromsession = map.get(socketEntity.getFromUser());
-//                    Session tosession = map.get(socketEntity.getToUser());
-                    Session fromsession = userMap.get(socketEntity.getFromUser()).session;
-                    Session tosession = userMap.get(socketEntity.getToUser()).session;
-                    if (tosession != null) {
-                        fromsession.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_chat_101,socketEntity)));//发送消息
-                        tosession.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_chat_101,socketEntity)));//发送消息
-                    } else {
-                        fromsession.getAsyncRemote().sendText("系统消息:对方不在线或者您输入的频道号有误");//发送消息
+                    MyWebSocket fromWebSocket = userMap.get(socketEntity.getFromUser());
+                    MyWebSocket toWebSocket = userMap.get(socketEntity.getToUser());
+                    if (null!=fromWebSocket&&null!=fromWebSocket.session){
+                        fromWebSocket.session.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_chat_101,socketEntity)));//发送消息
+                    }else{
+//                        fromsession.getAsyncRemote().sendText("系统消息:对方不在线或者您输入的频道号有误");//发送消息
+                        System.out.println(socketEntity.getFromUser()+"用户不在线");
                     }
+                    if (null!=toWebSocket&&null!=toWebSocket.session){
+                        toWebSocket.session.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_chat_101,socketEntity)));//发送消息
+                    }else {
+                        System.out.println(socketEntity.getToUser()+"用户不在线");
+                    }
+
                 } else {
                     //   广播群发给每一个客户端
-                    broadcast(socketEntity, name);
+//                    broadcast(socketEntity, name);
+                    socketEntity.setImgUrl(PictureUtil.picMap.get(socketEntity.getFromUser()));
+                    SocketResponse socketResponse = new SocketResponse(Command.cmd_chat_101, socketEntity);
+                    broadCastEvent(socketResponse);
                 }
                 break;
         }
@@ -127,7 +134,7 @@ public class MyWebSocket {
         }
     }
 
-    private void broadCastUserLogin(SocketResponse response){
+    private void broadCastEvent(SocketResponse response){
         userMap.forEach((userId, myWebSocket) -> {
             myWebSocket.session.getAsyncRemote().sendText(gson.toJson(response));
         });
