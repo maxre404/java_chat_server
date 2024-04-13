@@ -16,8 +16,10 @@ import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
@@ -35,6 +37,8 @@ public class MyWebSocket {
     //用来记录sessionId和session之间的绑定关系。
     private static Map<String,Session> map = new HashMap <String,Session> (  );
     private static Map<String,MyWebSocket> userMap = new ConcurrentHashMap<>();
+    public static List<SocketEntity> messageList = new CopyOnWriteArrayList<>();
+
     private Session session;//当前会话的session
     private String name;
     private String userId;
@@ -88,7 +92,7 @@ public class MyWebSocket {
         switch (cmd){
             case Command.cmd_get_online_users_100:
                 ArrayList<SocketUser> userList = new ArrayList<>();
-                userList.add(new SocketUser(Config.groupChat,  Config.systemGroupId,"","+++++++系统消息群+++++++++","",PictureUtil.systemGroupUrl));
+                userList.add(new SocketUser(Config.groupChat,  Config.systemGroupId,"","++++系统消息群++++","",PictureUtil.systemGroupUrl));
                 for (MyWebSocket myWebSocket: webSocketSet){
                     userList.add(new SocketUser(Config.privateMessage,0,myWebSocket.userId,myWebSocket.name,myWebSocket.session.getId(),myWebSocket.imgUrl));
                 }
@@ -100,6 +104,7 @@ public class MyWebSocket {
                     //单聊：需要找到发送者和接收者即可
                     MyWebSocket fromWebSocket = userMap.get(socketEntity.getFromUser());
                     MyWebSocket toWebSocket = userMap.get(socketEntity.getToUser());
+                    messageList.add(socketEntity);
                     if (null!=fromWebSocket&&null!=fromWebSocket.session){
                         fromWebSocket.session.getAsyncRemote().sendText(gson.toJson(new SocketResponse(Command.cmd_chat_101,socketEntity)));//发送消息
                     }else{
@@ -114,10 +119,10 @@ public class MyWebSocket {
 
                 } else {
                     //   广播群发给每一个客户端
-//                    broadcast(socketEntity, name);
                     socketEntity.setImgUrl(PictureUtil.picMap.get(socketEntity.getFromUser()));
                     SocketResponse socketResponse = new SocketResponse(Command.cmd_chat_101, socketEntity);
                     broadCastEvent(socketResponse);
+                    messageList.add(socketEntity);
                 }
                 break;
         }

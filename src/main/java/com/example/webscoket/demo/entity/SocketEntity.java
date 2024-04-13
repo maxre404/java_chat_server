@@ -8,6 +8,7 @@ public class SocketEntity {
     private int type;//聊天类型，0群聊，1单聊；
     private String groupId;//如果是群聊 则有这个id
     private String fromUser;//发送者
+    private String fromUserName;//发送者用户名
     private String toUser;//接收者；（可以是用户名等）session.getId（）
     private String message;//消息
     private String imgUrl;//用户头像地址 目前只有群聊用到了
@@ -67,6 +68,14 @@ public class SocketEntity {
         this.imgUrl = imgUrl;
     }
 
+    public String getFromUserName() {
+        return fromUserName;
+    }
+
+    public void setFromUserName(String fromUserName) {
+        this.fromUserName = fromUserName;
+    }
+
     @Override
     public String toString() {
         return "SocketEntity{" +
@@ -74,6 +83,7 @@ public class SocketEntity {
                 ", type=" + type +
                 ", groupId='" + groupId + '\'' +
                 ", fromUser='" + fromUser + '\'' +
+                ", fromUserName='" + fromUserName + '\'' +
                 ", toUser='" + toUser + '\'' +
                 ", message='" + message + '\'' +
                 ", imgUrl='" + imgUrl + '\'' +
